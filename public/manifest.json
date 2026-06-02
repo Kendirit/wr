@@ -1,26 +1,57 @@
 {
+  "id": "/",
+  "scope": "/",
   "name": "Western Redemption GDR - Storie del Far West",
-  "short_name": "Western GDR",
-  "description": "Gioco di ruolo testuale ambientato nel Far West",
+  "short_name": "WR GDR",
+  "description": "Un'applicazione per giocare a Western Redemption (WRGDR), un gioco di ruolo fantasy storico ambientato nel Nuovo Messico della seconda metà del 1800.",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#26201c",
   "theme_color": "#c4a484",
-  "lang": "it",
+  "orientation": "portrait-primary",
+  "categories": [
+    "games",
+    "entertainment"
+  ],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "categories": ["games", "entertainment"]
+  "shortcuts": [
+    {
+      "name": "Gioca Ora",
+      "short_name": "Gioca",
+      "description": "Inizia subito la tua avventura nel Vecchio West",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/icon.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
 }
