@@ -1,0 +1,17 @@
+{
+  "name": "Western Redemption GDR",
+  "short_name": "WR GDR",
+  "description": "Un'applicazione per giocare a Western Redemption (WRGDR), un gioco di ruolo fantasy storico ambientato nel Nuovo Messico della seconda metà del 1800.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#26201c",
+  "theme_color": "#c4a484",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

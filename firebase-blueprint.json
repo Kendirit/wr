@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "Instance": {
+      "title": "Game Instance",
+      "description": "A shared game session identified by a unique code.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "description": "Unique code (Name + 1-100)" },
+        "location": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "archived"] },
+        "preferences": { "type": "string", "description": "Optional user preferences for the adventure" },
+        "summary": { "type": "string", "description": "AI generated summary of the adventure" }
+      },
+      "required": ["code", "status"]
+    },
+    "Character": {
+      "title": "Character",
+      "description": "A player character within an instance.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "inventory": { "type": "array", "items": { "type": "string" } },
+        "talents": { "type": "array", "items": { "type": "string" } },
+        "xp": { "type": "number" },
+        "level": { "type": "number" },
+        "ownerId": { "type": "string", "description": "Player Name (used for session identification)" },
+        "isDead": { "type": "boolean" },
+        "currentPlane": { "type": "string" }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A message in the game chat.",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["user", "model"] },
+        "text": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "authorName": { "type": "string" }
+      }
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Private user information.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "age": { "type": "number" },
+        "ageConfirmed": { "type": "boolean" },
+        "cookiesAccepted": { "type": "boolean" },
+        "privacyAccepted": { "type": "boolean" },
+        "marketingAccepted": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Private user profiles."
+    },
+    "/instances/{instanceId}": {
+      "schema": "Instance",
+      "description": "Root collection for game instances."
+    },
+    "/instances/{instanceId}/characters/{charId}": {
+      "schema": "Character",
+      "description": "Characters belonging to an instance."
+    },
+    "/instances/{instanceId}/messages/{msgId}": {
+      "schema": "Message",
+      "description": "Chat history for an instance."
+    }
+  }
+}

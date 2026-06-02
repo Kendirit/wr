@@ -1,0 +1,8 @@
+{
+  "name": "Western Redemption Gdr- Storie del Far West",
+  "description": "Un'applicazione per giocare a Western Redemption (WRGDR), un gioco di ruolo fantasy storico ambientato nel Nuovo Messico della seconda metà del 1800.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
