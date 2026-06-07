@@ -33,10 +33,12 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+   const distPath = path.join(process.cwd(), 'dist');
+app.use(express.static(distPath));
+app.use('/.well-known', express.static(path.join(distPath, '.well-known')));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
     });
   }
 
