@@ -47,16 +47,13 @@ import {
   onAuthStateChanged, 
   signOut,
   User as FirebaseUser,
-  GoogleAuthProvider,
-  signInWithPopup
+  updateProfile
 } from 'firebase/auth';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from './firebase';
 import { cn } from './lib/utils';
 import { Character, Message, GameInstance, GameState, UserProfile } from './types';
 import { generateResponse, startAdventure, generateSummary } from './services/gemini';
-
-const googleProvider = new GoogleAuthProvider();
 
 const TALENTS_LIST = [
   "Olio cuore (+ostacoli)", "Iron Mike (+corpo a corpo)", "Run,run,run (+corsa)",
@@ -83,10 +80,11 @@ export default function App() {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [marketingAccepted, setMarketingAccepted] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [registerAlias, setRegisterAlias] = useState('');
 
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('wr_playerName') || '');
   const [instanceCode, setInstanceCode] = useState(() => localStorage.getItem('wr_instanceCode') || '');
-  const [instanceNumber, setInstanceNumber] = useState(() => localStorage.getItem('wr_instanceNumber') || '1');
+  const [instanceNumber, setInstanceNumber] = useState(() => localStorage.getItem('wr_instanceNumber') || '0');
   const [adventurePreferences, setAdventurePreferences] = useState('');
   const [archivedInstances, setArchivedInstances] = useState<GameInstance[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -138,7 +136,7 @@ export default function App() {
   // Sync playerName with profile
   useEffect(() => {
     if (userProfile && !playerName) {
-      const name = userProfile.email.split('@')[0];
+      const name = userProfile.displayName || userProfile.email.split('@')[0];
       setPlayerName(name);
       localStorage.setItem('wr_playerName', name);
     }
@@ -337,7 +335,7 @@ export default function App() {
       
       await addDoc(collection(db, 'instances', gameState.instance.id, 'messages'), {
         role: 'model',
-        text: `--- AVVENTURA ARCHIVIATA ---\n\nRIASSUNTO GM: ${summary}\n\nQuesta istanza è ora chiusa. Potete usare questo riassunto come base per una nuova avventura!`,
+        text: `--- AVVENTURA ARCHIVIATA ---\n\nRIASSUNTO GM: ${summary}\n\nQuesta Room è ora chiusa. Potete usare questo riassunto come base per una nuova avventura!`,
         timestamp: Date.now(),
         authorName: 'Sistema'
       });
@@ -358,33 +356,6 @@ export default function App() {
     setGameState({ instance: null, character: null, messages: [], characters: [] });
   };
 
-  const handleSocialAuth = async (provider: GoogleAuthProvider) => {
-    setAuthError(null);
-    setIsLoading(true);
-    try {
-      const result = await signInWithPopup(auth, provider);
-      // Check if profile exists, if not create basic one
-      const docRef = doc(db, 'users', result.user.uid);
-      const docSnap = await getDoc(docRef);
-      
-      if (!docSnap.exists()) {
-        await setDoc(docRef, {
-          email: result.user.email || '',
-          age: 18, // Default to 18 for social login placeholders
-          ageConfirmed: true,
-          cookiesAccepted: true,
-          privacyAccepted: true,
-          marketingAccepted: false,
-          createdAt: Date.now()
-        });
-      }
-    } catch (err: any) {
-      setAuthError(err.message || "Errore durante l'accesso social.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
@@ -399,8 +370,10 @@ export default function App() {
           throw new Error("Devi accettare l'età, i cookie e la privacy policy.");
         }
         const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCred.user, { displayName: registerAlias });
         await setDoc(doc(db, 'users', userCred.user.uid), {
           email,
+          displayName: registerAlias,
           age: ageNum,
           ageConfirmed: true,
           cookiesAccepted: true,
@@ -425,6 +398,8 @@ export default function App() {
   const handleSignOut = () => {
     signOut(auth);
     setIsLoggedIn(false);
+    setPlayerName('');
+    localStorage.removeItem('wr_playerName');
     setGameState({ instance: null, character: null, messages: [], characters: [] });
   };
 
@@ -442,23 +417,29 @@ export default function App() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#26201c] border border-[#3d342d] p-8 rounded-3xl max-w-md w-full shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-[#c4a484]/20" />
           
-          <div className="flex flex-col items-center gap-8 mb-12 text-center">
+          <div className="flex flex-col items-center gap-8 mb-8 text-center">
             <div className="flex items-end justify-center gap-10">
-              {/* Stylized Indian Teepee */}
+              {/* Stylized Indian Teepee - Brighter gold/sand glow and solid fill like the hat */}
               <div className="relative w-16 h-32 flex items-end justify-center group">
-                <div className="absolute inset-0 bg-[#c4a484]/5 blur-3xl rounded-full scale-150 animate-pulse" />
+                <div className="absolute inset-0 bg-[#c4a484]/25 blur-3xl rounded-full scale-150 animate-pulse" />
                 {/* Teepee Body */}
-                <div className="relative z-10 w-20 h-24 bg-[#26201c] border-x-2 border-b-2 border-[#c4a484]/40" style={{ clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)' }}>
+                <div className="relative z-10 w-20 h-24 bg-gradient-to-b from-[#e0d5c1] to-[#c4a484] shadow-lg overflow-hidden" style={{ clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)' }}>
+                  {/* Native Pattern Band */}
+                  <div className="absolute bottom-4 left-0 w-full h-1.5 bg-[#1a1614]/60" />
+                  {/* Star ornament on front */}
+                  <div className="absolute bottom-7 left-1/2 -translate-x-1/2 text-[#1a1614]/70">
+                    <Star size={10} className="fill-[#1a1614]/30" />
+                  </div>
                   {/* Entrance Slit */}
                   <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-10 bg-[#1a1614] rounded-t-full" />
                 </div>
                 {/* Teepee Poles */}
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center justify-center -space-x-1">
-                  <div className="w-[2px] h-32 bg-[#c4a484]/40 -rotate-[15deg] origin-bottom" />
-                  <div className="w-[2px] h-32 bg-[#c4a484]/40 rotate-[15deg] origin-bottom" />
+                  <div className="w-[2px] h-32 bg-[#e0d5c1] -rotate-[15deg] origin-bottom" />
+                  <div className="w-[2px] h-32 bg-[#e0d5c1] rotate-[15deg] origin-bottom" />
                 </div>
                 {/* Totem Bird on top */}
-                <Bird size={14} className="absolute -top-6 text-[#c4a484] opacity-80" strokeWidth={1.5} />
+                <Bird size={14} className="absolute -top-6 text-[#e0d5c1]" strokeWidth={2.5} />
               </div>
 
               {/* Sharper/Angular Cowboy Hat */}
@@ -481,53 +462,155 @@ export default function App() {
             </div>
             
             <div className="space-y-1">
-              <h1 className="text-5xl font-bold text-[#c4a484] uppercase tracking-[-0.05em] drop-shadow-2xl">Western Redemption</h1>
+              <h1 className="text-4xl font-bold text-[#c4a484] uppercase tracking-[-0.05em] drop-shadow-2xl">Western Redemption</h1>
               <div className="flex items-center justify-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#8c7a6b]">
                 <div className="h-[1px] w-6 bg-[#c4a484]/20" />
                 <span>Anno 1800</span>
                 <div className="h-[1px] w-6 bg-[#c4a484]/20" />
               </div>
             </div>
-            
-            <p className="text-[#8c7a6b] text-sm font-serif italic max-w-[320px] leading-relaxed">
-              Cronache di frontiera, onore e polvere.
-            </p>
           </div>
 
-          <div className="space-y-4">
-            <button 
-              onClick={() => handleSocialAuth(googleProvider)}
+          {/* Authentic Wild West Tabs for Sign Up / Login */}
+          <div className="grid grid-cols-2 p-1 bg-[#1a1614] rounded-xl border border-[#3d342d] mb-6 shadow-inner">
+            <button
+              type="button"
+              onClick={() => { setAuthMode('login'); setAuthError(null); }}
+              className={`py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+                authMode === 'login'
+                  ? 'bg-[#c4a484] text-[#1a1614] shadow-md'
+                  : 'text-[#8c7a6b] hover:text-[#e0d5c1]'
+              }`}
+            >
+              Accedi
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthMode('signup'); setAuthError(null); }}
+              className={`py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+                authMode === 'signup'
+                  ? 'bg-[#c4a484] text-[#1a1614] shadow-md'
+                  : 'text-[#8c7a6b] hover:text-[#e0d5c1]'
+              }`}
+            >
+              Registrati
+            </button>
+          </div>
+
+          <form onSubmit={handleAuth} className="space-y-4">
+            {authMode === 'signup' && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[#8c7a6b] flex items-center gap-1">
+                  <Star size={10} className="text-[#c4a484]" /> Alias Silenzioso (Nome Giocatore / ID)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={registerAlias}
+                  onChange={(e) => setRegisterAlias(e.target.value)}
+                  placeholder="es. TexWiller o Manolesta"
+                  className="w-full bg-[#1a1614] border border-[#3d342d] rounded-xl p-3 focus:outline-none focus:border-[#c4a484] text-[#e0d5c1] text-xs"
+                />
+                <p className="text-[9px] text-[#8c7a6b] italic">Questo alias nasconde la tua vera e-mail e ti identifica nel West.</p>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#8c7a6b]">Indirizzo E-mail</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="es. nome@frontiera.com"
+                className="w-full bg-[#1a1614] border border-[#3d342d] rounded-xl p-3 focus:outline-none focus:border-[#c4a484] text-[#e0d5c1] text-xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#8c7a6b]">Password</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Almeno 6 caratteri"
+                className="w-full bg-[#1a1614] border border-[#3d342d] rounded-xl p-3 focus:outline-none focus:border-[#c4a484] text-[#e0d5c1] text-xs"
+              />
+            </div>
+
+            {authMode === 'signup' && (
+              <>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#8c7a6b]">Età</label>
+                  <input
+                    type="number"
+                    required
+                    min="18"
+                    max="110"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    placeholder="Minimo 18 anni"
+                    className="w-full bg-[#1a1614] border border-[#3d342d] rounded-xl p-3 focus:outline-none focus:border-[#c4a484] text-[#e0d5c1] text-xs"
+                  />
+                </div>
+
+                <div className="space-y-2.5 mt-3 bg-[#1a1614] p-3 rounded-xl border border-[#3d342d]">
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      required
+                      checked={ageConfirmed}
+                      onChange={(e) => setAgeConfirmed(e.target.checked)}
+                      className="mt-1 accent-[#c4a484]"
+                    />
+                    <span className="text-[10px] text-[#8c7a6b]">Dichiaro di essere maggiorenne (18+)</span>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      required
+                      checked={cookiesAccepted}
+                      onChange={(e) => setCookiesAccepted(e.target.checked)}
+                      className="mt-1 accent-[#c4a484]"
+                    />
+                    <span className="text-[10px] text-[#8c7a6b]">Accetto i cookie di sessione per salvare progressi</span>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      required
+                      checked={privacyAccepted}
+                      onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                      className="mt-1 accent-[#c4a484]"
+                    />
+                    <span className="text-[10px] text-[#8c7a6b]">Accetto la Privacy Policy e il trattamento sicuro dei dati</span>
+                  </label>
+                </div>
+              </>
+            )}
+
+            {authError && (
+              <p className="text-red-400 text-xs italic text-center mt-2 bg-red-950/20 py-1.5 px-3 border border-red-900/30 rounded-lg">{authError}</p>
+            )}
+
+            <button
+              type="submit"
               disabled={isLoading}
-              className="w-full bg-white text-gray-900 font-bold py-3.5 rounded-xl hover:bg-gray-100 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-sm disabled:opacity-55"
+              className="w-full bg-[#c4a484] text-[#1a1614] font-bold py-3.5 rounded-xl hover:bg-[#b09375] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-55 mt-4 text-xs uppercase tracking-wider font-mono"
             >
               {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin text-gray-900" />
+                <Loader2 className="w-5 h-5 animate-spin text-[#1a1614]" />
               ) : (
                 <>
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                  </svg>
-                  Entra con Google
+                  <ChevronRight size={18} />
+                  <span>{authMode === 'login' ? "Cavalleria d'Ingresso" : "Registrazione & Inizia l'Avventura"}</span>
                 </>
               )}
             </button>
-
-            {authError && (
-              <p className="text-red-400 text-xs italic text-center mt-2">{authError}</p>
-            )}
-
-            <div className="p-4 bg-[#1a1614] rounded-xl border border-[#3d342d] text-[10px] text-[#8c7a6b] leading-relaxed shadow-inner mt-4">
-              <span className="text-[#e0d5c1] font-bold block border-b border-[#3d342d] pb-1 uppercase tracking-tighter mb-1">
-                Liberatoria di Gioco e Privacy
-              </span>
-              <p>
-                Effettuando l'accesso con Google, dichiari di essere maggiorenne (18+) e acconsenti al trattamento della tua e-mail finalizzato esclusivamente alla gestione del profilo giocatore e ai salvataggi dei progressi di gioco. Comprendo che i testi generati sono frutto di una narrazione interattiva.
-              </p>
-            </div>
-          </div>
+          </form>
         </motion.div>
         
         <div className="flex gap-4 text-[10px] text-[#5c5045] uppercase tracking-widest font-bold">
@@ -553,10 +636,10 @@ export default function App() {
           <div className="flex flex-col items-center gap-4 mb-8 text-center">
             <div className="flex items-end justify-center gap-4">
               {/* Mini Teepee */}
-              <div className="relative w-8 h-10 flex items-end justify-center opacity-70">
-                <div className="w-8 h-8 bg-[#c4a484]/10 border border-[#c4a484]/40" style={{ clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)' }} />
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-[1px] h-10 bg-[#c4a484]/40 rotate-[15deg]" />
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-[1px] h-10 bg-[#c4a484]/40 -rotate-[15deg]" />
+              <div className="relative w-8 h-10 flex items-end justify-center">
+                <div className="w-8 h-8 bg-gradient-to-b from-[#e0d5c1] to-[#c4a484]" style={{ clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)' }} />
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-[1.5px] h-10 bg-[#e0d5c1] rotate-[15deg]" />
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-[1.5px] h-10 bg-[#e0d5c1] -rotate-[15deg]" />
               </div>
               {/* Mini Hat */}
               <div className="relative flex flex-col items-center">
@@ -568,22 +651,22 @@ export default function App() {
               </div>
             </div>
             <h1 className="text-2xl font-bold text-[#c4a484] uppercase tracking-tighter">Western Redemption</h1>
-            <p className="text-[#8c7a6b] text-xs font-mono uppercase tracking-widest">Istanza: Nuovo Messico • 1800</p>
+            <p className="text-[#8c7a6b] text-xs font-mono uppercase tracking-widest">Nuovo Messico • 1800</p>
           </div>
           
           <form onSubmit={joinInstance} className="space-y-6">
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-widest text-[#8c7a6b] flex items-center gap-2">
-                <Users size={14} /> Nome Istanza
+                <Users size={14} /> Nome della Room
               </label>
               <input type="text" value={instanceCode} onChange={e => setInstanceCode(e.target.value)} placeholder="es. CampagnaWest" className="w-full bg-[#1a1614] border border-[#3d342d] rounded-xl p-4 focus:outline-none focus:border-[#c4a484] text-[#e0d5c1]" />
             </div>
             
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-widest text-[#8c7a6b] flex items-center gap-2">
-                <Key size={14} /> Numero (1-100)
+                <Star size={14} className="text-[#c4a484]" /> Livello (0-100)
               </label>
-              <input type="number" min="1" max="100" value={instanceNumber} onChange={e => setInstanceNumber(e.target.value)} className="w-full bg-[#1a1614] border border-[#3d342d] rounded-xl p-4 focus:outline-none focus:border-[#c4a484] text-[#e0d5c1]" />
+              <input type="number" min="0" max="100" value={instanceNumber} onChange={e => setInstanceNumber(e.target.value)} className="w-full bg-[#1a1614] border border-[#3d342d] rounded-xl p-4 focus:outline-none focus:border-[#c4a484] text-[#e0d5c1]" />
             </div>
 
             <div className="space-y-2">
@@ -617,10 +700,10 @@ export default function App() {
             </h3>
             <div className="grid grid-cols-1 gap-3 text-[11px] text-[#8c7a6b] leading-relaxed">
               <div className="bg-[#1a1614] p-3 rounded-lg border border-[#3d342d]">
-                <span className="text-[#c4a484] font-bold">1. Nome Istanza:</span> È il titolo della tua avventura. Scegline uno nuovo per iniziare una storia da zero o uno esistente per unirti a una campagna.
+                <span className="text-[#c4a484] font-bold">1. Nome della Room:</span> È il titolo della tua avventura. Scegline uno nuovo per iniziare una storia da zero o uno esistente per unirti a una campagna.
               </div>
               <div className="bg-[#1a1614] p-3 rounded-lg border border-[#3d342d]">
-                <span className="text-[#c4a484] font-bold">2. Numero:</span> È il "canale". Per giocare insieme a un amico, inserite lo <span className="underline">stesso nome</span> e lo <span className="underline">stesso numero</span>.
+                <span className="text-[#c4a484] font-bold">2. Livello:</span> Indica la difficoltà o il livello dell'avventura. Per sincronizzarti con un amico nello stesso livello, inserite lo <span className="underline">stesso nome della Room</span> e lo <span className="underline">stesso livello</span>.
               </div>
               <div className="bg-[#1a1614] p-3 rounded-lg border border-[#3d342d]">
                 <span className="text-[#c4a484] font-bold">3. Nome Giocatore:</span> È la tua firma. Usalo per riprendere il tuo personaggio e i tuoi XP in qualsiasi momento.
@@ -684,9 +767,9 @@ export default function App() {
           <div className="flex items-center gap-3">
             <div className="flex items-end gap-2">
               {/* Mini Teepee Icon */}
-              <div className="relative w-6 h-6 flex items-end justify-center opacity-40">
-                <div className="w-6 h-5 bg-[#c4a484]/20" style={{ clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)' }} />
-                <div className="absolute -top-1 w-[0.5px] h-7 bg-[#c4a484]/40 rotate-12" />
+              <div className="relative w-6 h-6 flex items-end justify-center opacity-90">
+                <div className="w-6 h-5 bg-gradient-to-b from-[#e0d5c1] to-[#c4a484]" style={{ clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)' }} />
+                <div className="absolute -top-1 w-[1px] h-7 bg-[#e0d5c1] rotate-12" />
               </div>
               {/* Mini Hat Icon */}
               <div className="relative flex flex-col items-center opacity-80">

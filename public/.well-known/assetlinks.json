@@ -1,8 +1,0 @@
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "com.wrgdr",
-    "sha256_cert_fingerprints": ["0A:14:C5:8E:50:AA:85:A5:14:7A:F9:82:A4:EC:4F:53:AD:46:39:62:DC:00:BE:C8:3A:08:C3:B7:FA:6C:8F"]
-  }
-}]
